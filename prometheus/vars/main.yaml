@@ -1,0 +1,9 @@
+prometheusDirectories: 
+  - /etc/prometheus
+  - /var/lib/prometheus
+prometheusDownloadLink: https://github.com/prometheus/prometheus/releases/download/v2.35.0/prometheus-2.35.0.linux-amd64.tar.gz
+prometheusDownloadingPath: /tmp/prometheus-2.35.0.linux-amd64.tar.gz
+prometheusBinDirectories: 
+  - /usr/local/bin/prometheus
+  - /usr/local/bin/promtool
+prometheusServiceFilePath: /etc/systemd/system/prometheus.service

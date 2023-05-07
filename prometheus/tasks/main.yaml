@@ -1,0 +1,74 @@
+- name: create Prometheus user 
+  user:
+    name: prometheus
+    shell: /bin/false
+    createhome: no
+
+- name: Create prometheus directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+  with_items:
+    "{{ prometheusDirectories }}"
+
+
+- name: Download prometheus
+  get_url:
+    url: "{{ prometheusDownloadLink }}"
+    dest: "{{ prometheusDownloadingPath }}"
+
+
+- name: untar prometheus installer 
+  unarchive:
+    src: "{{ prometheusDownloadingPath }}"
+    dest: /tmp/
+    remote_src: true
+
+
+- name: Move console files to /etc/prometheus
+  shell: mv /tmp/prometheus-2.35.0.linux-amd64/console* /etc/prometheus/ 
+
+- name: Move prometheus configuration file to /etc/prometheus
+  shell: mv /tmp/prometheus-2.35.0.linux-amd64/prometheus.yml /etc/prometheus
+
+
+- name: Change prometheus configuration directory ownership
+  file:
+    path: /etc/prometheus
+    owner: prometheus
+    group: prometheus
+
+
+- name: Move prometheus to /usr/local/bin/
+  shell: mv /tmp/prometheus-2.35.0.linux-amd64/prometheus /usr/local/bin/
+
+- name: Move promtool to /usr/local/bin/
+  shell: mv /tmp/prometheus-2.35.0.linux-amd64/promtool /usr/local/bin/
+
+- name: change prometheus directories ownership
+  file:
+    path: "{{ item }}"
+    owner: prometheus
+    group: prometheus
+  with_items:
+    "{{ prometheusBinDirectories }}"
+
+- name: make prometheus as a service 
+  copy: 
+    src: ./prometheus.service
+    dest: "{{ prometheusServiceFilePath }}"
+    owner: prometheus
+    group: prometheus
+
+
+- name: Reload systemd configuration
+  systemd:
+    daemon_reload: yes
+
+- name: start prometheus service 
+  systemd:
+    name: prometheus
+    state: started
+    enabled: true
