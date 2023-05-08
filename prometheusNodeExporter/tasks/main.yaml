@@ -1,0 +1,86 @@
+- name: create Prometheus Node Exporter user 
+  user:
+    name: node_exporter
+    shell: /bin/false
+    createhome: no
+
+
+- name: find if downloaded file exist
+  stat:
+    path: "{{ NodeExporterDownloadingPath }}"
+  register: downloaded_file_exists
+
+
+- name: Download prometheus Node Exporter
+  get_url:
+    url: "{{ NodeExporterDownloadLink }}"
+    dest: "{{ NodeExporterDownloadingPath }}"
+  when: downloaded_file_exists.stat.exists == false
+
+
+- name: untar prometheus Node Exporter installer 
+  unarchive:
+    src: "{{ NodeExporterDownloadingPath }}"
+    dest: /tmp/
+    remote_src: true
+  when: downloaded_file_exists.stat.exists == false
+
+
+
+- name: find if node_exporter directores if exist 
+  stat:
+    path:  /tmp/node_exporter-1.3.1.linux-amd64/node_exporter
+  register: node_exporter_exists
+
+
+- name: Move node_exporter to /usr/local/bin/
+  shell: mv /tmp/node_exporter-1.3.1.linux-amd64/node_exporter /usr/local/bin/
+  when: node_exporter_exists.stat.exists == true
+
+
+- name: Change node_exporter binary ownership
+  file:
+    path:  /usr/local/bin/node_exporter
+    owner: node_exporter
+    group: node_exporter
+
+
+- name: make node exporter as a service 
+  copy: 
+    src: ./node_exporter.service
+    dest: "{{ NodeExporterServiceFilePath }}"
+    owner: node_exporter
+    group: node_exporter
+
+
+- name: Reload systemd configuration
+  systemd:
+    daemon_reload: yes
+
+
+- name: start prometheus node exporter service 
+  systemd:
+    name: node_exporter
+    state: started
+    enabled: true
+
+
+- name: Check if job and target already exist
+  shell: grep {{job_name}} /etc/prometheus/prometheus.yml > /dev/null  ; echo $?
+  register: presence
+
+
+- name: Add new job and target to Prometheus config [Node Exporter]
+  lineinfile:
+    path: /etc/prometheus/prometheus.yml
+    line: "  - job_name: '{{ job_name }}'\n    static_configs:\n      - targets: ['{{ target }}']"
+    state: present
+    insertafter: "^scrape_configs:"
+  when: presence.stdout != "0"
+  notify:
+  - restart_prometheus
+
+
+
+
+

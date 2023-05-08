@@ -14,10 +14,17 @@
     "{{ prometheusDirectories }}"
 
 
+- name: find if downloaded file exist
+  stat:
+    path: "{{ prometheusDownloadingPath }}"
+  register: _file_exists
+
+
 - name: Download prometheus
   get_url:
     url: "{{ prometheusDownloadLink }}"
     dest: "{{ prometheusDownloadingPath }}"
+  when: _file_exists.stat.exists == false
 
 
 - name: untar prometheus installer 
@@ -25,13 +32,30 @@
     src: "{{ prometheusDownloadingPath }}"
     dest: /tmp/
     remote_src: true
+  when: _file_exists.stat.exists == false
+
+
+- name: find if console directores if exist 
+  stat:
+    path: /tmp/prometheus-2.35.0.linux-amd64/console*
+  register: directories_exists
 
 
 - name: Move console files to /etc/prometheus
-  shell: mv /tmp/prometheus-2.35.0.linux-amd64/console* /etc/prometheus/ 
+  shell: mv /tmp/prometheus-2.35.0.linux-amd64/console* /etc/prometheus/
+  when: directories_exists.stat.exists == true
+
+
+- name: find if prometheus.yml file if exist 
+  stat:
+    path: /tmp/prometheus-2.35.0.linux-amd64/prometheus.yml
+  register: prometheusFile_exists
+
 
 - name: Move prometheus configuration file to /etc/prometheus
   shell: mv /tmp/prometheus-2.35.0.linux-amd64/prometheus.yml /etc/prometheus
+  when: prometheusFile_exists.stat.exists == true
+
 
 
 - name: Change prometheus configuration directory ownership
@@ -41,11 +65,27 @@
     group: prometheus
 
 
+- name: find if prometheus binary if exist 
+  stat:
+    path: /tmp/prometheus-2.35.0.linux-amd64/prometheus
+  register: prometheusBinary_exists
+
+
 - name: Move prometheus to /usr/local/bin/
   shell: mv /tmp/prometheus-2.35.0.linux-amd64/prometheus /usr/local/bin/
+  when: prometheusBinary_exists.stat.exists == true
+
+
+- name: find if promtool binary if exist 
+  stat:
+    path: /tmp/prometheus-2.35.0.linux-amd64/promtool 
+  register: promtoolBinary_exists
+
 
 - name: Move promtool to /usr/local/bin/
   shell: mv /tmp/prometheus-2.35.0.linux-amd64/promtool /usr/local/bin/
+  when: promtoolBinary_exists.stat.exists == true
+
 
 - name: change prometheus directories ownership
   file:
@@ -54,6 +94,7 @@
     group: prometheus
   with_items:
     "{{ prometheusBinDirectories }}"
+
 
 - name: make prometheus as a service 
   copy: 
@@ -66,6 +107,7 @@
 - name: Reload systemd configuration
   systemd:
     daemon_reload: yes
+
 
 - name: start prometheus service 
   systemd:
