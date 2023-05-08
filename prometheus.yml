@@ -3,4 +3,4 @@
   roles:
   # - prometheus
   # - prometheusNodeExporter
-  - docker
+  # - docker

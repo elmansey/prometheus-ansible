@@ -1,5 +1,0 @@
-- name: create Prometheus Node Exporter user 
-  user:
-    name: node_exporter
-    shell: /bin/false
-    createhome: no
