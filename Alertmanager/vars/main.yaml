@@ -1,0 +1,11 @@
+alertmanagerDownloadLink: https://github.com/prometheus/alertmanager/releases/download/v0.24.0/alertmanager-0.24.0.linux-amd64.tar.gz
+alertmanagerDownloadingPath: /tmp/alertmanager-0.24.0.linux-amd64.tar.gz
+binaryFiles:
+  - /usr/local/bin/alertmanager
+  - /usr/local/bin/amtool
+
+alertmanagerDirectories:
+  - /etc/alertmanager
+AlertManagerConfigurationFilePath: /etc/alertmanager/alertmanager.yml
+alertmanagerServiceFilePath: /etc/systemd/system/alertmanager.service
+target: localhost:9093

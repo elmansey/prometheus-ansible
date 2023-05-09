@@ -1,0 +1,7 @@
+groups:
+- name: checkCadvisorStatus
+  rules:
+    - record: cadvisorStatus
+      expr: up{job="prometheus-containers-metrix"}
+    - alert: The Cadvisor is down 
+      expr: cadvisorStatus == 0 

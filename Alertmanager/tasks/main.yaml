@@ -1,0 +1,142 @@
+- name: create alertmanager user 
+  user:
+    name: alertmanager
+    shell: /bin/false
+    createhome: no
+
+
+- name: find if downloaded file exist
+  stat:
+    path: "{{ alertmanagerDownloadingPath }}"
+  register: _exists
+
+- name: Download alertmanager
+  get_url:
+    url: "{{ alertmanagerDownloadLink }}"
+    dest: "{{ alertmanagerDownloadingPath }}"
+  when: _exists.stat.exists == false
+
+
+- name: untar alertmanager installer 
+  unarchive:
+    src: "{{ alertmanagerDownloadingPath }}"
+    dest: /tmp/
+    remote_src: true
+  when: _exists.stat.exists == false
+
+
+- name: find if alertmanager exists 
+  stat:
+    path: /tmp/alertmanager-0.24.0.linux-amd64/alertmanager
+  register: alertmanager_exists
+
+
+- name: Move alertmanager binary to  /usr/local/bin/
+  shell: mv /tmp/alertmanager-0.24.0.linux-amd64/alertmanager /usr/local/bin/
+  when: alertmanager_exists.stat.exists == true
+
+
+- name: find if amtool exists 
+  stat:
+    path: /tmp/alertmanager-0.24.0.linux-amd64/amtool
+  register: amtool_exists
+
+
+- name: Move amtool to /usr/local/bin/
+  shell: mv /tmp/alertmanager-0.24.0.linux-amd64/amtool /usr/local/bin/
+  when: amtool_exists.stat.exists == true
+
+
+- name: Change binary files ownership
+  file:
+    path: "{{ item }}"
+    owner: alertmanager
+    group: alertmanager
+  with_items: 
+    "{{ binaryFiles }}"
+
+
+- name: Create alertmanager directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: alertmanager
+    group: alertmanager
+  with_items:
+    "{{ alertmanagerDirectories }}"
+
+
+- name: Alert Manager Configuration file
+  copy: 
+    src: ./alertmanager.yml
+    dest: "{{ AlertManagerConfigurationFilePath }}"
+    owner: alertmanager
+    group: alertmanager
+
+
+- name: make alertmanager as a service 
+  copy: 
+    src: ./alertmanager.service
+    dest: "{{ alertmanagerServiceFilePath }}"
+    owner: alertmanager
+    group: alertmanager
+
+
+
+- name: Reload systemd configuration
+  systemd:
+    daemon_reload: yes
+
+
+- name: start alertmanager service 
+  systemd:
+    name: alertmanager
+    state: started
+    enabled: true
+
+- name: Check if target already exist
+  shell: grep {{target}} /etc/prometheus/prometheus.yml > /dev/null  ; echo $?
+  register: presence_
+
+
+- name: Add new target to Prometheus config [Alert-Manager]
+  lineinfile:
+    path: /etc/prometheus/prometheus.yml
+    line: "           - {{target}}"
+    state: present
+    insertafter: "alertmanager:"
+  when: presence_.stdout != "0"
+
+
+
+- name: make rules.yaml file 
+  copy: 
+    src: ./rules.yml
+    dest: /etc/prometheus/
+
+
+- name: Check if rule already exist
+  shell: grep "^rules.yml" /etc/prometheus/prometheus.yml > /dev/null  ; echo $?
+  register: presence__
+
+
+- name: Add new rule in Prometheus config 
+  lineinfile:
+    path: /etc/prometheus/prometheus.yml
+    line: "    - \"rules.yml\""
+    state: present
+    insertafter: "^rule_files:"
+  when: presence__.stdout != "0"
+
+
+- name: Reload systemd configuration
+  systemd:
+    daemon_reload: yes
+
+
+- name: restart prometheus service
+  systemd:
+    name: prometheus
+    state: restarted
+    enabled: true
+
