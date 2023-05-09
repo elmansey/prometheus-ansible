@@ -1,0 +1,44 @@
+- name: Install Grafana
+  apt:
+    update_cache: yes
+
+- name: install dependances packages as a prerequisite
+  apt:
+    name: gnupg2,curl,software-properties-common
+    state: present
+
+- name: Download Docker GPG key
+  apt_key:
+    url: "{{GrafanaGPGLink}}"
+    state: present
+
+
+- name: Add Grafana APT repository
+  apt_repository:
+    repo: "{{GrafanaAPTrepository}}"
+    state: present
+    filename: grafana
+    update_cache: yes
+
+- name: install Grafana
+  apt:
+   name:  grafana
+   state: present
+
+
+- name: Enable and start Grafana server service
+  systemd:
+    name: grafana-server
+    state: started
+    enabled: yes
+
+- name: add prometheus as a default datasource in Grafana 
+  copy: 
+    src: ./datasources.yaml 
+    dest: "{{ GrafanaDataSourcePath }}"
+
+
+- name:  restart Grafana server service
+  systemd:
+    name: grafana-server
+    state: restarted

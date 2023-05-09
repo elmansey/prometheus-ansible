@@ -1,0 +1,3 @@
+GrafanaGPGLink: https://packages.grafana.com/gpg.key
+GrafanaAPTrepository: deb https://packages.grafana.com/oss/deb stable main
+GrafanaDataSourcePath: /etc/grafana/provisioning/datasources/

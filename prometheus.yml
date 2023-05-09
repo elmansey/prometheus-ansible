@@ -1,6 +1,7 @@
 - name: install Prometheus  
   hosts: prometheus_server
   roles:
-  - prometheus
-  - prometheusNodeExporter
-  - prometheusCadvisor
+  # - prometheus
+  # - prometheusNodeExporter
+  # - prometheusCadvisor
+  - Grafana
