@@ -1,0 +1,4 @@
+DockerGPGLink:  https://download.docker.com/linux/ubuntu/gpg
+job_name: prometheus-containers-metrix
+target: localhost:8080
+

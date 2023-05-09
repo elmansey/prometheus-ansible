@@ -1,0 +1,92 @@
+- name: Install Docker as a prerequisite for cadvisor
+  apt:
+    update_cache: yes
+
+- name: install dependances  packages 
+  apt:
+    name: ca-certificates,curl,gnupg,lsb-release,python3-pip
+    state: present
+
+- name: Download Docker GPG key
+  get_url:
+    url: "{{DockerGPGLink}}"
+    dest: /tmp/docker.gpg
+    
+#
+
+- name: find if docker-archive-keyring.gpg if exist 
+  stat:
+    path:  /usr/share/keyrings/docker-archive-keyring.gpg 
+  register: key_exists
+
+- name: Import Docker GPG key
+  shell: cat /tmp/docker.gpg | sudo gpg  --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg 
+  when: key_exists.stat.exists == false
+
+- name: Get architecture
+  shell: dpkg --print-architecture
+  register: dpkg_architecture
+
+- name: Add Docker repository to apt sources
+  lineinfile:
+    path: /etc/apt/sources.list.d/docker.list
+    line: 'deb [arch={{ dpkg_architecture.stdout }} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable'
+    create: true
+
+- name: update apt 
+  apt:
+    update_cache: yes
+
+- name: install docker packages 
+  apt:
+    name: docker-ce,docker-ce-cli,containerd.io,docker-compose-plugin
+    state: present
+
+
+- name: Install docker-py python package
+  pip:
+    name: docker-py
+
+
+# run Cadvisor container to collect metrics from containers 
+- name: run Cadvisor container 
+  docker_container:
+    name: cadvisor
+    image: gcr.io/cadvisor/cadvisor
+    detach: yes
+    privileged: yes
+    container_default_behavior: compatibility
+    devices:
+      - "/dev/kmsg"
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro 
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+
+- name: Check if job and target already exist
+  shell: grep {{job_name}} /etc/prometheus/prometheus.yml > /dev/null  ; echo $?
+  register: presence
+
+
+- name: Add new job and target to Prometheus config [Node Exporter]
+  lineinfile:
+    path: /etc/prometheus/prometheus.yml
+    line: "  - job_name: '{{ job_name }}'\n    static_configs:\n      - targets: ['{{ target }}']"
+    state: present
+    insertafter: "^scrape_configs:"
+  when: presence.stdout != "0"
+
+
+- name: restart prometheus service
+  systemd:
+    name: prometheus
+    state: restarted
+    enabled: true
+
+
+
