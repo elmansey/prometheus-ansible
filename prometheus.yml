@@ -1,8 +1,8 @@
 - name: install Prometheus  
-  hosts: prometheus_server
+  hosts: aws_ec2
   roles:
-  # - prometheus
-  # - prometheusNodeExporter
-  # - prometheusCadvisor
-  # - Grafana
+  - prometheus
+  - prometheusNodeExporter
+  - prometheusCadvisor
+  - Grafana
   - Alertmanager
